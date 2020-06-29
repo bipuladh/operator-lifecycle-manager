@@ -8,6 +8,7 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/diff"
 
 	"github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
@@ -25,10 +26,11 @@ type StrategyDeploymentPermissions struct {
 	Rules              []rbac.PolicyRule `json:"rules"`
 }
 
-// StrategyDeploymentSpec contains the name and spec for the deployment ALM should create
+// StrategyDeploymentSpec contains the name, spec and label for the deployment ALM should create
 type StrategyDeploymentSpec struct {
-	Name string                `json:"name"`
-	Spec appsv1.DeploymentSpec `json:"spec"`
+	Name  string                `json:"name"`
+	Spec  appsv1.DeploymentSpec `json:"spec"`
+	Label labels.Set            `json:"labels,omitempty"`
 }
 
 // StrategyDetailsDeployment represents the parsed details of a Deployment
@@ -97,7 +99,7 @@ func NewStrategyDeploymentInstaller(strategyClient wrappers.InstallStrategyDeplo
 
 func (i *StrategyDeploymentInstaller) installDeployments(deps []StrategyDeploymentSpec) error {
 	for _, d := range deps {
-		deployment, err := i.deploymentForSpec(d.Name, d.Spec)
+		deployment, err := i.deploymentForSpec(d.Name, d.Spec, d.Label)
 		if err != nil {
 			return err
 		}
@@ -110,10 +112,11 @@ func (i *StrategyDeploymentInstaller) installDeployments(deps []StrategyDeployme
 	return nil
 }
 
-func (i *StrategyDeploymentInstaller) deploymentForSpec(name string, spec appsv1.DeploymentSpec) (deployment *appsv1.Deployment, err error) {
+func (i *StrategyDeploymentInstaller) deploymentForSpec(name string, spec appsv1.DeploymentSpec, labels labels.Set) (deployment *appsv1.Deployment, err error) {
 	dep := &appsv1.Deployment{Spec: spec}
 	dep.SetName(name)
 	dep.SetNamespace(i.owner.GetNamespace())
+	dep.SetLabels(labels)
 
 	// Merge annotations (to avoid losing info from pod template)
 	annotations := map[string]string{}
@@ -234,7 +237,7 @@ func (i *StrategyDeploymentInstaller) checkForDeployments(deploymentSpecs []Stra
 		}
 
 		// check equality
-		calculated, err := i.deploymentForSpec(spec.Name, spec.Spec)
+		calculated, err := i.deploymentForSpec(spec.Name, spec.Spec, spec.Label)
 		if err != nil {
 			return err
 		}

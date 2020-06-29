@@ -100,7 +100,9 @@ func TestInstallStrategyDeploymentInstallDeployments(t *testing.T) {
 			Controller:         &ownerutil.NotController,
 			BlockOwnerDeletion: &ownerutil.DontBlockOwnerDeletion,
 		}}
+		labels = make(map[string]string)
 	)
+	labels["test"] = "app"
 
 	type inputs struct {
 		strategyDeploymentSpecs []StrategyDeploymentSpec
@@ -124,8 +126,9 @@ func TestInstallStrategyDeploymentInstallDeployments(t *testing.T) {
 			inputs: inputs{
 				strategyDeploymentSpecs: []StrategyDeploymentSpec{
 					{
-						Name: "test-deployment-1",
-						Spec: appsv1.DeploymentSpec{},
+						Name:  "test-deployment-1",
+						Spec:  appsv1.DeploymentSpec{},
+						Label: labels,
 					},
 					{
 						Name: "test-deployment-2",
@@ -164,6 +167,7 @@ func TestInstallStrategyDeploymentInstallDeployments(t *testing.T) {
 							Labels: map[string]string{
 								"olm.owner":           mockOwner.GetName(),
 								"olm.owner.namespace": mockOwner.GetNamespace(),
+								"test":                "apps",
 							},
 						},
 						Spec: appsv1.DeploymentSpec{
